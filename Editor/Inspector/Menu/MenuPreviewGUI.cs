@@ -140,10 +140,17 @@ namespace nadena.dev.modular_avatar.core.editor
                     var obj = new SerializedObject(expMenu);
                     var controls = obj.FindProperty(nameof(expMenu.controls));
                     var subGui = new List<MenuItemCoreGUI>();
+                    var accumulated = 0;
                     for (int i = 0; i < controls.arraySize; i++)
                     {
+                        accumulated++;
+                        var nextIsSplit = accumulated == VRCExpressionsMenu.MAX_CONTROLS - 1 && controls.arraySize - i > 2;
                         subGui.Add(new MenuItemCoreGUI(parameterReference, controls.GetArrayElementAtIndex(i),
-                            _gui._redraw));
+                            _gui._redraw, nextIsSplit));
+                        if (nextIsSplit)
+                        {
+                            accumulated = 0;
+                        }
                     }
 
                     return () =>
@@ -246,7 +253,7 @@ namespace nadena.dev.modular_avatar.core.editor
                     var container = ScriptableObject.CreateInstance<VRCExpressionsMenu>();
                     container.controls = new List<VRCExpressionsMenu.Control> {control};
                     var prop = new SerializedObject(container).FindProperty("controls").GetArrayElementAtIndex(0);
-                    var gui = new MenuItemCoreGUI(null, prop, _gui._redraw);
+                    var gui = new MenuItemCoreGUI(null, prop, _gui._redraw, false);
                     return () =>
                     {
                         using (new EditorGUI.DisabledScope(true))
@@ -260,6 +267,22 @@ namespace nadena.dev.modular_avatar.core.editor
             public void PushControl(VirtualControl control)
             {
                 PushControl((VRCExpressionsMenu.Control) control);
+            }
+
+            public void PushSeparatorNode()
+            {
+                _gui.PushGuiNode("", () =>
+                {
+                    return () =>
+                    {
+                        using (new EditorGUI.DisabledScope(true))
+                        {
+                            EditorGUILayout.Separator();
+                            EditorGUILayout.HelpBox("THIS IS A SEPARATOR", MessageType.Error);
+                            EditorGUILayout.Separator();
+                        }
+                    };
+                });
             }
 
             public VirtualMenuNode NodeFor(VRCExpressionsMenu menu)

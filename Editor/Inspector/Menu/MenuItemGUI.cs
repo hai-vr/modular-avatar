@@ -43,6 +43,8 @@ namespace nadena.dev.modular_avatar.core.editor
 
         private readonly SerializedProperty _prop_submenuSource;
         private readonly SerializedProperty _prop_otherObjSource;
+        
+        private readonly bool _nextIsSplit;
 
         public bool AlwaysExpandContents = false;
         public bool ExpandContents = false;
@@ -84,6 +86,7 @@ namespace nadena.dev.modular_avatar.core.editor
 
             _prop_submenuSource = obj.FindProperty(nameof(ModularAvatarMenuItem.MenuSource));
             _prop_otherObjSource = obj.FindProperty(nameof(ModularAvatarMenuItem.menuSource_otherObjectChildren));
+            
             _previewGUI = new MenuPreviewGUI(redraw);
         }
 
@@ -93,7 +96,8 @@ namespace nadena.dev.modular_avatar.core.editor
         /// <param name="parameterReference"></param>
         /// <param name="_control"></param>
         /// <param name="redraw"></param>
-        public MenuItemCoreGUI(GameObject parameterReference, SerializedProperty _control, Action redraw)
+        /// <param name="nextIsSplit"></param>
+        public MenuItemCoreGUI(GameObject parameterReference, SerializedProperty _control, Action redraw, bool nextIsSplit)
         {
             _obj = _control.serializedObject;
             _parameterReference = parameterReference;
@@ -114,6 +118,7 @@ namespace nadena.dev.modular_avatar.core.editor
             _prop_submenuSource = null;
             _prop_otherObjSource = null;
             _previewGUI = new MenuPreviewGUI(redraw);
+            _nextIsSplit = nextIsSplit;
         }
 
         public void DoGUI()
@@ -324,6 +329,11 @@ namespace nadena.dev.modular_avatar.core.editor
                 EditorGUILayout.EndHorizontal();
 
                 _obj.ApplyModifiedProperties();
+            }
+
+            if (_nextIsSplit)
+            {
+                EditorGUILayout.HelpBox("...", MessageType.None);
             }
         }
 

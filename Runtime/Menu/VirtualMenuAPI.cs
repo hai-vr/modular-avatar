@@ -87,10 +87,23 @@ namespace nadena.dev.modular_avatar.core.menu
 
         public void Visit(NodeContext context)
         {
-            foreach (Transform t in root.transform)
+            var accumulated = 0;
+            var menuSources = Enumerable.Range(0, root.transform.childCount)
+                .Select(i => root.transform.GetChild(i))
+                .Select(t => t.GetComponent<MenuSource>())
+                .Where(source => source != null)
+                .ToArray();
+            for (var i = 0; i < menuSources.Length; i++)
             {
-                var source = t.GetComponent<MenuSource>();
-                if (source != null) context.PushNode(source);
+                var source = menuSources[i];
+                accumulated++;
+                var nextIsSplit = accumulated == VRCExpressionsMenu.MAX_CONTROLS - 1 && menuSources.Length - i > 2;
+                context.PushNode(source);
+                if (nextIsSplit)
+                {
+                    context.PushSeparatorNode();
+                    accumulated = 0;
+                }
             }
         }
     }
@@ -147,6 +160,8 @@ namespace nadena.dev.modular_avatar.core.menu
         /// <param name="menu"></param>
         /// <returns></returns>
         VirtualMenuNode NodeFor(MenuSource menu);
+
+        void PushSeparatorNode();
     }
 
     /// <summary>

@@ -177,6 +177,10 @@ namespace nadena.dev.modular_avatar.core.editor.menu
             _node.Controls.Add(control);
         }
 
+        public void PushSeparatorNode()
+        {
+        }
+
         public VirtualMenuNode NodeFor(VRCExpressionsMenu menu)
         {
             if (menu == null) return null;
