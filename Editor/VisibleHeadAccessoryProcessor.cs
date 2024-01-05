@@ -1,14 +1,19 @@
 ﻿using System.Collections.Generic;
+using System.Collections.Immutable;
 using nadena.dev.modular_avatar.editor.ErrorReporting;
 using UnityEngine;
 using UnityEngine.Animations;
+
+#if MA_VRCSDK3_AVATARS
 using VRC.SDK3.Dynamics.PhysBone.Components;
+#endif
 
 namespace nadena.dev.modular_avatar.core.editor
 {
-    internal class VisibleHeadAccessoryProcessor
+    internal class VisibleHeadAccessoryValidation
     {
-        private const double EPSILON = 0.01;
+        internal ImmutableHashSet<Transform> ActiveBones { get;  }
+        internal Transform HeadBone { get; }
 
         internal enum ReadyStatus
         {
@@ -18,23 +23,14 @@ namespace nadena.dev.modular_avatar.core.editor
             InPhysBoneChain
         }
 
-        private BuildContext _context;
-        private Transform _avatarTransform;
-        private HashSet<Transform> _activeBones = new HashSet<Transform>();
-        private Transform _headBone;
-
-        private HashSet<Transform> _visibleBones = new HashSet<Transform>();
-        private Transform _proxyHead;
-
-        public VisibleHeadAccessoryProcessor(BuildContext context)
+        public VisibleHeadAccessoryValidation(GameObject avatarRoot)
         {
-            _context = context;
-            _avatarTransform = context.AvatarRootTransform;
-
-            var animator = _avatarTransform.GetComponent<Animator>();
-            _headBone = animator != null ? animator.GetBoneTransform(HumanBodyBones.Head) : null;
-
-            foreach (var physBone in _avatarTransform.GetComponentsInChildren<VRCPhysBone>(true))
+            var animator = avatarRoot.GetComponent<Animator>();
+            HeadBone = animator != null && animator.isHuman ? animator.GetBoneTransform(HumanBodyBones.Head) : null;
+            
+            var activeBones = ImmutableHashSet.CreateBuilder<Transform>();
+#if MA_VRCSDK3_AVATARS
+            foreach (var physBone in avatarRoot.GetComponentsInChildren<VRCPhysBone>(true))
             {
                 var boneRoot = physBone.rootTransform != null ? physBone.rootTransform : physBone.transform;
                 var ignored = new HashSet<Transform>(physBone.ignoreTransforms);
@@ -45,16 +41,66 @@ namespace nadena.dev.modular_avatar.core.editor
                 }
             }
 
+            ActiveBones = activeBones.ToImmutable();
+
             void Traverse(Transform bone, HashSet<Transform> ignored)
             {
                 if (ignored.Contains(bone)) return;
-                _activeBones.Add(bone);
+                activeBones.Add(bone);
 
                 foreach (Transform child in bone)
                 {
                     Traverse(child, ignored);
                 }
             }
+#endif
+        }
+
+        internal ReadyStatus Validate(ModularAvatarVisibleHeadAccessory target)
+        {
+            ReadyStatus status = ReadyStatus.NotUnderHead;
+            Transform node = target.transform.parent;
+
+            if (ActiveBones.Contains(target.transform)) return ReadyStatus.InPhysBoneChain;
+
+            while (node != null)
+            {
+                if (node.GetComponent<ModularAvatarVisibleHeadAccessory>()) return ReadyStatus.ParentMarked;
+                if (ActiveBones.Contains(node)) return ReadyStatus.InPhysBoneChain;
+
+                if (node == HeadBone)
+                {
+                    status = ReadyStatus.Ready;
+                    break;
+                }
+
+                node = node.parent;
+            }
+
+            return status;
+        }
+    }
+    
+    internal class VisibleHeadAccessoryProcessor
+    {
+        private const double EPSILON = 0.01;
+
+        private BuildContext _context;
+        private VisibleHeadAccessoryValidation _validator;
+        
+        private Transform _avatarTransform;
+        private ImmutableHashSet<Transform> _activeBones => _validator.ActiveBones;
+        private Transform _headBone => _validator.HeadBone;
+
+        private HashSet<Transform> _visibleBones = new HashSet<Transform>();
+        private Transform _proxyHead;
+
+        public VisibleHeadAccessoryProcessor(BuildContext context)
+        {
+            _context = context;
+            _avatarTransform = context.AvatarRootTransform;
+            
+            _validator = new VisibleHeadAccessoryValidation(context.AvatarRootObject);
         }
 
         public void Process()
@@ -80,9 +126,14 @@ namespace nadena.dev.modular_avatar.core.editor
 
         bool Process(ModularAvatarVisibleHeadAccessory target)
         {
-            bool didWork = false;
+#if UNITY_ANDROID
+            Object.DestroyImmediate(target);
+            return false;
+#endif
 
-            if (Validate(target) == ReadyStatus.Ready)
+            bool didWork = false;
+            
+            if (_validator.Validate(target) == VisibleHeadAccessoryValidation.ReadyStatus.Ready)
             {
                 var proxy = CreateProxy();
 
@@ -135,30 +186,6 @@ namespace nadena.dev.modular_avatar.core.editor
             // TODO - lock proxy scale to head scale in animation?
 
             return obj.transform;
-        }
-
-        internal ReadyStatus Validate(ModularAvatarVisibleHeadAccessory target)
-        {
-            ReadyStatus status = ReadyStatus.NotUnderHead;
-            Transform node = target.transform.parent;
-
-            if (_activeBones.Contains(target.transform)) return ReadyStatus.InPhysBoneChain;
-
-            while (node != null)
-            {
-                if (node.GetComponent<ModularAvatarVisibleHeadAccessory>()) return ReadyStatus.ParentMarked;
-                if (_activeBones.Contains(node)) return ReadyStatus.InPhysBoneChain;
-
-                if (node == _headBone)
-                {
-                    status = ReadyStatus.Ready;
-                    break;
-                }
-
-                node = node.parent;
-            }
-
-            return status;
         }
     }
 }

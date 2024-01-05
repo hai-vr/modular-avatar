@@ -22,8 +22,8 @@ namespace nadena.dev.modular_avatar.core.editor
 
         internal static void InitStyles()
         {
-            buttonStyle = EditorStyles.miniButtonRight;
-            labelStyle = EditorStyles.label;
+            buttonStyle = new GUIStyle(EditorStyles.miniButtonRight);
+            labelStyle = new GUIStyle(EditorStyles.label);
             labelStyle.wordWrap = true;
 
             buttonStyle.fixedWidth = 40f;
@@ -73,7 +73,10 @@ namespace nadena.dev.modular_avatar.core.editor
             foreach (var message in messageGroups)
             {
                 EditorGUILayout.Space(SeparatorSize);
-                EditorGUILayout.LabelField(message);
+                var style = new GUIStyle(EditorStyles.label);
+                style.wordWrap = true;
+
+                EditorGUILayout.LabelField(message, style);
             }
 
             EditorGUILayout.BeginHorizontal();
@@ -256,11 +259,11 @@ namespace nadena.dev.modular_avatar.core.editor
         static bool ValidateSetupOutfit()
         {
             errorHeader = S("setup_outfit.err.header.notarget");
-            errorMessageGroups = new string[] {S("setup_outfit.err.unknown")};
+            errorMessageGroups = new string[] { S("setup_outfit.err.unknown") };
 
             if (Selection.objects.Length == 0)
             {
-                errorMessageGroups = new string[] {S("setup_outfit.err.no_selection")};
+                errorMessageGroups = new string[] { S("setup_outfit.err.no_selection") };
                 return false;
             }
 
@@ -284,7 +287,7 @@ namespace nadena.dev.modular_avatar.core.editor
                 if (nearestAvatarTransform == null || nearestAvatarTransform == xform)
                 {
                     errorMessageGroups = new string[]
-                        {S_f("setup_outfit.err.multiple_avatar_descriptors", xform.gameObject.name)};
+                        { S_f("setup_outfit.err.multiple_avatar_descriptors", xform.gameObject.name) };
                     return false;
                 }
 
@@ -302,7 +305,7 @@ namespace nadena.dev.modular_avatar.core.editor
             return true;
         }
 
-        private static bool FindBones(Object obj, out GameObject avatarRoot, out GameObject avatarHips,
+        internal static bool FindBones(Object obj, out GameObject avatarRoot, out GameObject avatarHips,
             out GameObject outfitHips)
         {
             avatarHips = outfitHips = null;
@@ -331,7 +334,9 @@ namespace nadena.dev.modular_avatar.core.editor
                 return false;
             }
 
-            avatarHips = avatarAnimator.GetBoneTransform(HumanBodyBones.Hips)?.gameObject;
+            avatarHips = avatarAnimator.isHuman
+                ? avatarAnimator.GetBoneTransform(HumanBodyBones.Hips)?.gameObject
+                : null;
 
             if (avatarHips == null)
             {
@@ -345,7 +350,9 @@ namespace nadena.dev.modular_avatar.core.editor
             var outfitAnimator = outfitRoot.GetComponent<Animator>();
             if (outfitAnimator != null)
             {
-                outfitHips = outfitAnimator.GetBoneTransform(HumanBodyBones.Hips)?.gameObject;
+                outfitHips = outfitAnimator.isHuman
+                    ? outfitAnimator.GetBoneTransform(HumanBodyBones.Hips)?.gameObject
+                    : null;
             }
 
             var hipsCandidates = new List<string>();
@@ -361,8 +368,12 @@ namespace nadena.dev.modular_avatar.core.editor
                         if (tempHip.name.Contains(avatarHips.name))
                         {
                             outfitHips = tempHip.gameObject;
+                            // Prefer the first hips we find
+                            break;
                         }
                     }
+
+                    if (outfitHips != null) break;
                 }
 
                 hipsCandidates.Add(avatarHips.name);

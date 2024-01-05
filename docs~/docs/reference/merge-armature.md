@@ -1,4 +1,4 @@
-﻿# Merge Armature
+# Merge Armature
 
 The Merge Armature component merges a tree of GameObjects onto the armature of the avatar.
 
@@ -41,15 +41,36 @@ Position locking allows the outfit to follow the movement of the base avatar, ev
 testing animations and poses, and for creating screenshots. There are three options for position lock mode:
 
 * Not locked - the outfit will not follow the base avatar in edit mode
-* Base =======> Target (Unidirectional) - When the base avatar moves, the outfit will move too. However, if you move the
+* Base \=\=\=\=\=\=\=\> Target (Unidirectional) - When the base avatar moves, the outfit will move too. However, if you move the
 outfit, the base avatar will not move. This mode will preserve any adjustments you've made to the outfit's fit, and is
 recommended for normal use.
-* Base <======> Target (Bidirectional) - When the base avatar moves, the outfit will move too. If you move the outfit,
+* Base \<\=\=\=\=\=\=\> Target (Bidirectional) - When the base avatar moves, the outfit will move too. If you move the outfit,
 the base avatar will move too. This mode is useful for certain advanced use cases, such as creating a prefab which
 animates the base avatar's hair or animal ears.
 
 When you set up an outfit with "setup outfit", the position lock mode will be set to "Base =======> Target
 (Unidirectional)". You can change this in the inspector if desired.
+
+## Reset position to base avatar
+
+![Reset position to base avatar](merge-armature-reset-position.png)
+
+When installing outfits that weren't originally created for your avatar of choice, it can be helpful to roughly set the
+outfit to match the position of your avatar before making fine adjustments. The "reset position to base avatar" tool in
+the Merge Armature Inspector can do this for you.
+
+When you click "Do It!", all bones in the outfit will have their position set to the corresponding bones in the avatar.
+There are three additional options you can use:
+
+* "Also set rotation": Sets the local rotation of all bones in the outfit to that of the base avatar. This is intended
+  for special cases; if the outfit was not made using the same 3D software as the avatar, you'll see strange effects.
+* "Also set local scale": Sets the local scale of all bones in the outfit to that of the base avatar. This is intended
+  for cases where you've adjusted the scale of bones in the base avatar, and need the outfit to match.
+* "Adjust outfit overall scale to match base avatar": Changes the scale of the outfit as a whole to match that of the
+  avatar as a whole. This uses arm length to determine the overall size of the avatar and outfit, and scales the whole
+  outfit up (or down) before adjusting any positions. This is generally recommended for setting up outfits.
+
+These options are not saved; clicking "do it!" will just reset the positions/etc once.
 
 ## Object references
 

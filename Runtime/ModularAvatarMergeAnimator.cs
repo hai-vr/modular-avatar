@@ -22,6 +22,8 @@
  * SOFTWARE.
  */
 
+#if MA_VRCSDK3_AVATARS
+
 using UnityEngine;
 using VRC.SDK3.Avatars.Components;
 
@@ -42,6 +44,8 @@ namespace nadena.dev.modular_avatar.core
         public bool deleteAttachedAnimator;
         public MergeAnimatorPathMode pathMode = MergeAnimatorPathMode.Relative;
         public bool matchAvatarWriteDefaults;
+        public AvatarObjectReference relativePathRoot = new AvatarObjectReference();
+        public int layerPriority = 0;
 
         public override void ResolveReferences()
         {
@@ -49,3 +53,5 @@ namespace nadena.dev.modular_avatar.core
         }
     }
 }
+
+#endif

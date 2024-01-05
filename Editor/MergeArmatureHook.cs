@@ -30,21 +30,29 @@ using nadena.dev.modular_avatar.editor.ErrorReporting;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Animations;
+
+#if MA_VRCSDK3_AVATARS
 using VRC.Dynamics;
 using VRC.SDK3.Dynamics.PhysBone.Components;
+#endif
+
 using Object = UnityEngine.Object;
 
 namespace nadena.dev.modular_avatar.core.editor
 {
     internal class MergeArmatureHook
     {
+        private const float DuplicatedBoneMaxSqrDistance = 0.001f * 0.001f;
+
         private ndmf.BuildContext frameworkContext;
         private BuildContext context;
+        private Dictionary<Transform, VRCPhysBoneBase> physBoneByRootBone;
         private BoneDatabase BoneDatabase = new BoneDatabase();
 
         private PathMappings PathMappings => frameworkContext.Extension<AnimationServicesContext>()
             .PathMappings;
 
+        private HashSet<Transform> humanoidBones = new HashSet<Transform>();
         private HashSet<Transform> mergedObjects = new HashSet<Transform>();
         private HashSet<Transform> thisPassAdded = new HashSet<Transform>();
 
@@ -52,11 +60,28 @@ namespace nadena.dev.modular_avatar.core.editor
         {
             this.frameworkContext = context;
             this.context = context.Extension<ModularAvatarContext>().BuildContext;
+            physBoneByRootBone = new Dictionary<Transform, VRCPhysBoneBase>();
+            foreach (var physbone in avatarGameObject.transform.GetComponentsInChildren<VRCPhysBoneBase>(true))
+                physBoneByRootBone[physbone.GetRootTransform()] = physbone;
+
+            if (avatarGameObject.TryGetComponent<Animator>(out var animator) && animator.isHuman)
+            {
+                this.humanoidBones = new HashSet<Transform>(Enum.GetValues(typeof(HumanBodyBones))
+                    .Cast<HumanBodyBones>()
+                    .Where(x => x != HumanBodyBones.LastBone)
+                    .Select(animator.GetBoneTransform));
+            }
 
             var mergeArmatures =
                 avatarGameObject.transform.GetComponentsInChildren<ModularAvatarMergeArmature>(true);
 
             TopoProcessMergeArmatures(mergeArmatures);
+
+#if MA_VRCSDK3_AVATARS
+            foreach (var c in avatarGameObject.transform.GetComponentsInChildren<ScaleProxy>(true))
+            {
+                BoneDatabase.AddMergedBone(c.transform);
+            }
 
             foreach (var c in avatarGameObject.transform.GetComponentsInChildren<VRCPhysBone>(true))
             {
@@ -75,6 +100,7 @@ namespace nadena.dev.modular_avatar.core.editor
                 if (c.rootTransform == null) c.rootTransform = c.transform;
                 RetainBoneReferences(c);
             }
+#endif
 
             foreach (var c in avatarGameObject.transform.GetComponentsInChildren<IConstraint>(true))
             {
@@ -124,7 +150,7 @@ namespace nadena.dev.modular_avatar.core.editor
                 if (visited.Contains(config)) return;
                 if (visitStack.Contains(config))
                 {
-                    BuildReport.LogFatal("merge_armature.circular_dependency", new string[0], config);
+                    BuildReport.LogFatal("error.merge_armature.circular_dependency", new string[0], config);
                     return;
                 }
 
@@ -163,7 +189,9 @@ namespace nadena.dev.modular_avatar.core.editor
                 mergedObjects.Clear();
                 thisPassAdded.Clear();
                 MergeArmature(config, target);
+#if MA_VRCSDK3_AVATARS
                 PruneDuplicatePhysBones();
+#endif
                 UnityEngine.Object.DestroyImmediate(config);
             });
         }
@@ -338,10 +366,20 @@ namespace nadena.dev.modular_avatar.core.editor
                         var targetObjectName = childName.Substring(config.prefix.Length,
                             childName.Length - config.prefix.Length - config.suffix.Length);
                         var targetObject = newParent.transform.Find(targetObjectName);
+                        // Zip merge bones if the names match and the outfit side is not affected by its own PhysBone.
+                        // Also zip merge when it seems to have been copied from avatar side by checking the dinstance.
                         if (targetObject != null)
                         {
-                            childNewParent = targetObject.gameObject;
-                            shouldZip = true;
+                            if (NotAffectedByPhysBoneOrSimilarChainsAsTarget(child, targetObject))
+                            {
+                                childNewParent = targetObject.gameObject;
+                                shouldZip = true;
+                            }
+                            else if (humanoidBones.Contains(targetObject))
+                            {
+                                BuildReport.LogFatal(
+                                    "error.merge_armature.physbone_on_humanoid_bone", new string[0], config);
+                            }
                         }
                     }
 
@@ -350,12 +388,35 @@ namespace nadena.dev.modular_avatar.core.editor
             }
         }
 
+        private bool NotAffectedByPhysBoneOrSimilarChainsAsTarget(Transform child, Transform target)
+        {
+            // not affected
+            if (!physBoneByRootBone.TryGetValue(child, out VRCPhysBoneBase physBone)) return true;
+
+            var ignores = new HashSet<Transform>(physBone.ignoreTransforms.Where(x => x));
+
+            return IsSimilarChainInPosition(child, target, ignores);
+        }
+
+        // Returns true if child and target are in similar position and children are recursively.
+        private static bool IsSimilarChainInPosition(Transform child, Transform target, HashSet<Transform> ignores)
+        {
+            if ((target.position - child.position).sqrMagnitude > DuplicatedBoneMaxSqrDistance) return false;
+
+            return child.Cast<Transform>()
+                .Where(t => !ignores.Contains(t))
+                .Select(t => (t, t2: target.Find(t.name)))
+                .Where(t1 => t1.t2)
+                .All(t1 => IsSimilarChainInPosition(t1.t, t1.t2, ignores));
+        }
+
         Transform FindOriginalParent(Transform merged)
         {
             while (merged != null && thisPassAdded.Contains(merged)) merged = merged.parent;
             return merged;
         }
 
+#if MA_VRCSDK3_AVATARS
         /**
          * Sometimes outfit authors copy the entire armature, including PhysBones components. If we merge these and
          * end up with multiple PB components referencing the same target, PB refuses to animate the bone. So detect
@@ -395,5 +456,6 @@ namespace nadena.dev.modular_avatar.core.editor
                 }
             }
         }
+#endif
     }
 }

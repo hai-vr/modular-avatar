@@ -3,11 +3,16 @@ using System.IO;
 using System.Linq;
 using nadena.dev.modular_avatar.core.editor;
 using nadena.dev.modular_avatar.editor.ErrorReporting;
+using nadena.dev.ndmf;
+using nadena.dev.ndmf.ui;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
+
+#if MA_VRCSDK3_AVATARS
 using VRC.SDK3.Avatars.Components;
+#endif
 
 namespace modular_avatar_tests
 {
@@ -36,7 +41,8 @@ namespace modular_avatar_tests
                 }
             }
 
-            BuildReport.Clear();
+            ErrorReport.Clear();
+            ErrorReportWindow.DISABLE_WINDOW = true;
             objects = new List<GameObject>();
         }
 
@@ -48,7 +54,9 @@ namespace modular_avatar_tests
                 Object.DestroyImmediate(obj);
             }
 
-            Util.DeleteTemporaryAssets();
+            AssetDatabase.DeleteAsset(TEMP_ASSET_PATH);
+            FileUtil.DeleteFileOrDirectory(TEMP_ASSET_PATH);
+            ErrorReportWindow.DISABLE_WINDOW = false;
         }
 
         protected nadena.dev.ndmf.BuildContext CreateContext(GameObject root)
@@ -82,6 +90,15 @@ namespace modular_avatar_tests
             return go;
         }
 
+        
+        protected GameObject CreateCommonPrefab(string relPath)
+        {
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>("Packages/nadena.dev.modular-avatar/UnitTests/_CommonAssets/" + relPath);
+
+            var go = Object.Instantiate(prefab);
+            objects.Add(go);
+            return go;
+        }
 
         protected T LoadAsset<T>(string relPath) where T : UnityEngine.Object
         {
@@ -94,6 +111,7 @@ namespace modular_avatar_tests
             return obj;
         }
 
+#if MA_VRCSDK3_AVATARS
         protected static AnimationClip findFxClip(GameObject prefab, string layerName)
         {
             var motion = findFxMotion(prefab, layerName) as AnimationClip;
@@ -109,6 +127,7 @@ namespace modular_avatar_tests
 
             return state.motion;
         }
+#endif
 
         protected static AnimatorState FindStateInLayer(AnimatorControllerLayer layer, string stateName)
         {
@@ -120,10 +139,10 @@ namespace modular_avatar_tests
             return null;
         }
 
+#if MA_VRCSDK3_AVATARS
         protected static AnimatorControllerLayer findFxLayer(GameObject prefab, string layerName)
         {
-            var fx = prefab.GetComponent<VRCAvatarDescriptor>().baseAnimationLayers
-                .FirstOrDefault(l => l.type == VRCAvatarDescriptor.AnimLayerType.FX);
+            var fx = FindFxController(prefab);
 
             Assert.NotNull(fx);
             var ac = fx.animatorController as AnimatorController;
@@ -134,5 +153,12 @@ namespace modular_avatar_tests
             Assert.NotNull(layer);
             return layer;
         }
+
+        internal static VRCAvatarDescriptor.CustomAnimLayer FindFxController(GameObject prefab)
+        {
+            return prefab.GetComponent<VRCAvatarDescriptor>().baseAnimationLayers
+                .FirstOrDefault(l => l.type == VRCAvatarDescriptor.AnimLayerType.FX);
+        }
+#endif
     }
 }

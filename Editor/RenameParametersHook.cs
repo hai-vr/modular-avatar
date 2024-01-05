@@ -1,7 +1,10 @@
-﻿using System;
+﻿#if MA_VRCSDK3_AVATARS
+
+using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using nadena.dev.modular_avatar.animation;
 using nadena.dev.modular_avatar.editor.ErrorReporting;
 using UnityEditor;
 using UnityEditor.Animations;
@@ -164,6 +167,18 @@ namespace nadena.dev.modular_avatar.core.editor
                             {
                                 ProcessAnimator(ref controller, remaps);
                                 merger.animator = controller;
+                            }
+
+                            break;
+                        }
+
+                        case ModularAvatarMergeBlendTree merger:
+                        {
+                            var bt = merger.BlendTree as BlendTree;
+                            if (bt != null)
+                            {
+                                merger.BlendTree = bt = new DeepClone(_context.PluginBuildContext).DoClone(bt);
+                                ProcessBlendtree(bt, remaps);
                             }
 
                             break;
@@ -494,3 +509,5 @@ namespace nadena.dev.modular_avatar.core.editor
         }
     }
 }
+
+#endif

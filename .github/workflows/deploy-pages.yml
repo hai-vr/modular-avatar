@@ -62,7 +62,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/setup-node@v3
+      - uses: actions/setup-node@v4
         with:
           node-version: 18
 
@@ -71,13 +71,13 @@ jobs:
           ref: ${{ inputs.ref || github.ref }}
 
       - name: Download artifact (tagged)
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: docs
           path: docs/build
 
       - name: Download artifact (latest)
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: docs-dev
           path: docs/build/dev
@@ -122,7 +122,7 @@ jobs:
           workingDirectory: docs-site~
           
       - name: Purge cache
-        uses: nathanvaughn/actions-cloudflare-purge@3b31015a54307a38ea48904fb367eeb0a753a66f
+        uses: nathanvaughn/actions-cloudflare-purge@752b6dc9a31b2392c40f7ee9c0556a412383aa5e
         continue-on-error: true
         with:
           cf_zone: ${{ secrets.CF_ZONE_ID }}

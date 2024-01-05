@@ -29,9 +29,9 @@ namespace nadena.dev.modular_avatar.core.editor
 
         public void Process()
         {
-            var avatarDescriptor = _buildContext.AvatarDescriptor;
+            var avatarRootTransform = _buildContext.AvatarRootTransform;
             var replacementComponents =
-                avatarDescriptor.GetComponentsInChildren<ModularAvatarReplaceObject>(true);
+                avatarRootTransform.GetComponentsInChildren<ModularAvatarReplaceObject>(true);
 
             if (replacementComponents.Length == 0) return;
 
@@ -43,11 +43,11 @@ namespace nadena.dev.modular_avatar.core.editor
 
             foreach (var component in replacementComponents)
             {
-                var targetObject = component.targetObject?.Get(_buildContext.AvatarDescriptor);
+                var targetObject = component.targetObject?.Get(avatarRootTransform);
 
                 if (targetObject == null)
                 {
-                    BuildReport.LogFatal("replace_object.null_target", new string[0],
+                    BuildReport.LogFatal("error.replace_object.null_target", new string[0],
                         component, targetObject);
                     UnityObject.DestroyImmediate(component.gameObject);
                     continue;
@@ -55,7 +55,7 @@ namespace nadena.dev.modular_avatar.core.editor
 
                 if (component.transform.GetComponentsInParent<Transform>().Contains(targetObject.transform))
                 {
-                    BuildReport.LogFatal("replace_object.parent_of_target", new string[0],
+                    BuildReport.LogFatal("error.replace_object.parent_of_target", new string[0],
                         component, targetObject);
                     UnityObject.DestroyImmediate(component.gameObject);
                     continue;
@@ -63,7 +63,7 @@ namespace nadena.dev.modular_avatar.core.editor
 
                 if (replacements.TryGetValue(targetObject, out var existingReplacement))
                 {
-                    BuildReport.LogFatal("replace_object.replacing_replacement", new string[0],
+                    BuildReport.LogFatal("error.replace_object.replacing_replacement", new string[0],
                         component, existingReplacement.Item1);
                     UnityObject.DestroyImmediate(component);
                     continue;
@@ -83,8 +83,13 @@ namespace nadena.dev.modular_avatar.core.editor
                 replacement.transform.SetParent(original.transform.parent, true);
                 var siblingIndex = original.transform.GetSiblingIndex();
 
-                // Move children of original parent
+                // Move children of original parent (the List needs to be cloned first because it is being modified)
+                List<Transform> children = new List<Transform>();
                 foreach (Transform child in original.transform)
+                {
+                    children.Add(child);
+                }
+                foreach (Transform child in children)
                 {
                     child.SetParent(replacement.transform, true);
                 }
@@ -154,7 +159,7 @@ namespace nadena.dev.modular_avatar.core.editor
         {
             Dictionary<UnityObject, List<Reference>> refIndex = new Dictionary<UnityObject, List<Reference>>();
 
-            IndexObject(_buildContext.AvatarDescriptor.gameObject);
+            IndexObject(_buildContext.AvatarRootObject);
 
             return refIndex;
 

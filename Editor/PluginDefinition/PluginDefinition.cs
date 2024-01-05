@@ -15,6 +15,7 @@ namespace nadena.dev.modular_avatar.core.editor.plugin
     {
         public override string QualifiedName => "nadena.dev.modular-avatar";
         public override string DisplayName => "Modular Avatar";
+        public override Texture2D LogoTexture => LogoDisplay.LOGO_ASSET;
 
         protected override void OnUnhandledException(Exception e)
         {
@@ -29,13 +30,18 @@ namespace nadena.dev.modular_avatar.core.editor.plugin
             seq.Run("Clone animators", AnimationUtil.CloneAllControllers);
 
             seq = InPhase(BuildPhase.Transforming);
+            seq.Run("Validate configuration",
+                context => ComponentValidation.ValidateAll(context.AvatarRootObject));
             seq.WithRequiredExtension(typeof(ModularAvatarContext), _s1 =>
             {
                 seq.Run(ClearEditorOnlyTags.Instance);
                 seq.Run(MeshSettingsPluginPass.Instance);
+#if MA_VRCSDK3_AVATARS
                 seq.Run(RenameParametersPluginPass.Instance);
+                seq.Run(MergeBlendTreePass.Instance);
                 seq.Run(MergeAnimatorPluginPass.Instance);
                 seq.Run(MenuInstallPluginPass.Instance);
+#endif
                 seq.WithRequiredExtension(typeof(AnimationServicesContext), _s2 =>
                 {
                     seq.Run(MergeArmaturePluginPass.Instance);
@@ -45,14 +51,18 @@ namespace nadena.dev.modular_avatar.core.editor.plugin
                         ctx => new WorldFixedObjectProcessor().Process(ctx)
                     );
                     seq.Run(ReplaceObjectPluginPass.Instance);
+#if MA_VRCSDK3_AVATARS
                     seq.Run(BlendshapeSyncAnimationPluginPass.Instance);
+#endif
                 });
+#if MA_VRCSDK3_AVATARS
                 seq.Run(PhysbonesBlockerPluginPass.Instance);
                 seq.Run("Fixup Expressions Menu", ctx =>
                 {
                     var maContext = ctx.Extension<ModularAvatarContext>().BuildContext;
                     FixupExpressionsMenuPass.FixupExpressionsMenu(maContext);
                 });
+#endif
                 seq.Run("Rebind humanoid avatar", ctx =>
                 {
                     // workaround problem with avatar matching
@@ -73,6 +83,7 @@ namespace nadena.dev.modular_avatar.core.editor.plugin
                         UnityEngine.Object.DestroyImmediate(component);
                     }
                 });
+                seq.Run(PruneParametersPass.Instance);
             });
 
             InPhase(BuildPhase.Optimizing)
@@ -142,6 +153,7 @@ namespace nadena.dev.modular_avatar.core.editor.plugin
         }
     }
 
+#if MA_VRCSDK3_AVATARS
     class RenameParametersPluginPass : MAPass<RenameParametersPluginPass>
     {
         protected override void Execute(ndmf.BuildContext context)
@@ -165,6 +177,7 @@ namespace nadena.dev.modular_avatar.core.editor.plugin
             new MenuInstallHook().OnPreprocessAvatar(context.AvatarRootObject, MAContext(context));
         }
     }
+#endif
 
     class MergeArmaturePluginPass : MAPass<MergeArmaturePluginPass>
     {
@@ -198,6 +211,7 @@ namespace nadena.dev.modular_avatar.core.editor.plugin
         }
     }
 
+#if MA_VRCSDK3_AVATARS
     class BlendshapeSyncAnimationPluginPass : MAPass<BlendshapeSyncAnimationPluginPass>
     {
         protected override void Execute(ndmf.BuildContext context)
@@ -213,6 +227,7 @@ namespace nadena.dev.modular_avatar.core.editor.plugin
             PhysboneBlockerPass.Process(context.AvatarRootObject);
         }
     }
+#endif
 
     class GCGameObjectsPluginPass : MAPass<GCGameObjectsPluginPass>
     {

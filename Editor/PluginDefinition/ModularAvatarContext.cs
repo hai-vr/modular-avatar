@@ -15,22 +15,12 @@ namespace nadena.dev.modular_avatar.core.editor
             {
                 BuildContext = new BuildContext(context);
             }
-
-            toDispose = BuildReport.CurrentReport.ReportingOnAvatar(context.AvatarRootObject);
         }
 
         public void OnDeactivate(ndmf.BuildContext context)
         {
-            try
-            {
-                toDispose?.Dispose();
-                toDispose = null;
-            }
-            catch (Exception e)
-            {
-                ErrorReportUI.OpenErrorReportUI();
-                throw e;
-            }
+            toDispose?.Dispose();
+            toDispose = null;
         }
     }
 }

@@ -1,4 +1,6 @@
-﻿using System.Collections.Generic;
+﻿#if MA_VRCSDK3_AVATARS
+
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using UnityEditor.Animations;
@@ -56,6 +58,8 @@ namespace nadena.dev.modular_avatar.core.editor
             "_IsGrabbed",
             "_Angle",
             "_Stretch",
+            "_IsPosed",
+            "_Squish",
         }.ToImmutableList();
 
         public static ImmutableDictionary<string, DetectedParameter> ProbeParameters(GameObject root)
@@ -318,3 +322,5 @@ namespace nadena.dev.modular_avatar.core.editor
         }
     }
 }
+
+#endif
