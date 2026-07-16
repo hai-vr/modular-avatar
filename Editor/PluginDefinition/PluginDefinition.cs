@@ -81,8 +81,10 @@ namespace nadena.dev.modular_avatar.core.editor.plugin
                     seq.Run(MergeBlendTreePass.Instance);
                     seq.Run(MergeAnimatorPluginPass.Instance);
                     seq.Run(ApplyAnimatorDefaultValuesPass.Instance);
-
 #endif
+                    // Remove Merge Animator from non-VRChat avatars, even when the VRChat SDK is present
+                    seq.Run(RemoveMergeAnimatorPluginPass.Instance);
+
                     seq.WithRequiredExtension(typeof(ReadablePropertyExtension), _s3 =>
                     {
                         seq.Run("Reactive Components", ctx => new ReactiveObjectPass(ctx).Execute())
@@ -287,6 +289,29 @@ namespace nadena.dev.modular_avatar.core.editor.plugin
         }
     }
 #endif
+    
+    [RunsOnAllPlatforms]
+    class RemoveMergeAnimatorPluginPass : MAPass<RemoveMergeAnimatorPluginPass>
+    {
+        protected override void Execute(ndmf.BuildContext context)
+        {
+            // Already implemented within MergeAnimatorPluginPass
+            if (context.PlatformProvider.QualifiedName == WellKnownPlatforms.VRChatAvatar30) return;
+            
+            var toMerge = context.AvatarRootTransform.GetComponentsInChildren<ModularAvatarMergeAnimator>(true);
+
+            foreach (var merge in toMerge)
+            {
+                if (merge.deleteAttachedAnimator)
+                {
+                    var animator = merge.GetComponent<Animator>();
+                    if (animator != null) Object.DestroyImmediate(animator);
+                }
+
+                Object.DestroyImmediate(merge);
+            }
+        }
+    }
 
     class MergeArmaturePluginPass : MAPass<MergeArmaturePluginPass>
     {

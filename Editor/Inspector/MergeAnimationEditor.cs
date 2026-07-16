@@ -1,6 +1,4 @@
-﻿#if MA_VRCSDK3_AVATARS
-
-using UnityEditor;
+﻿using UnityEditor;
 using static nadena.dev.modular_avatar.core.editor.Localization;
 
 namespace nadena.dev.modular_avatar.core.editor
@@ -48,6 +46,7 @@ namespace nadena.dev.modular_avatar.core.editor
         {
             serializedObject.Update();
 
+#if MA_VRCSDK3_AVATARS
             EditorGUILayout.PropertyField(prop_animator, G("merge_animator.animator"));
             EditorGUILayout.PropertyField(prop_layerType, G("merge_animator.layer_type"));
             EditorGUILayout.PropertyField(prop_deleteAttachedAnimator, G("merge_animator.delete_attached_animator"));
@@ -62,11 +61,14 @@ namespace nadena.dev.modular_avatar.core.editor
                     G("merge_animator.match_avatar_write_defaults"));
             }
 
+#else
+            EditorGUILayout.PropertyField(prop_animator, G("merge_animator.animator"));
+            EditorGUILayout.PropertyField(prop_deleteAttachedAnimator, G("merge_animator.delete_attached_animator"));
+#endif
+
             serializedObject.ApplyModifiedProperties();
 
             ShowLanguageUI();
         }
     }
 }
-
-#endif
