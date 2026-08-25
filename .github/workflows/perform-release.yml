@@ -36,6 +36,9 @@ jobs:
           GITHUB_CONTEXT: ${{ toJson(github) }}
         run: echo "$GITHUB_CONTEXT"
 
+      - name: Checkout
+        uses: actions/checkout@v3
+
       - name: get version
         id: version
         uses: notiz-dev/github-action-json-property@7c8cf5cc36eb85d8d287a8086a39dac59628eb31
@@ -47,9 +50,6 @@ jobs:
         run: |
           echo "zipFile=${{ env.PKG_NAME }}-${{ steps.version.outputs.prop }}".zip >> $GITHUB_ENV
           echo "unityPackage=${{ env.PKG_NAME }}-${{ steps.version.outputs.prop }}.unitypackage" >> $GITHUB_ENV
-
-      - name: Checkout
-        uses: actions/checkout@v3
 
       - name: Create Zip
         run: |
